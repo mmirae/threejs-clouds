@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Three.js 구름 두 종류</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB);
+
+    const camera = new THREE.PerspectiveCamera(
+      60,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    camera.position.z = 30;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const loader = new THREE.TextureLoader();
+    const textures = [];
+
+    // 두 텍스처 로딩 완료 후 실행
+    Promise.all([
+      loader.loadAsync('./cloud.png'),
+      loader.loadAsync('./bigcloud.png')
+    ]).then(([texture1, texture2]) => {
+      textures.push(texture1, texture2);
+      const cloudGroup = new THREE.Group();
+      scene.add(cloudGroup);
+
+      const numClouds = 60;
+      for (let i = 0; i < numClouds; i++) {
+        const texture = textures[Math.floor(Math.random() * textures.length)];
+        const material = new THREE.SpriteMaterial({
+          map: texture,
+          transparent: true,
+          opacity: 0.8,
+        });
+
+        const sprite = new THREE.Sprite(material);
+        sprite.scale.set(
+          10 + Math.random() * 10,
+          6 + Math.random() * 6,
+          1
+        );
+        sprite.position.set(
+          (Math.random() - 0.5) * 100,
+          (Math.random() - 0.5) * 50,
+          (Math.random() - 0.5) * 50
+        );
+        cloudGroup.add(sprite);
+      }
+
+      let mouseX = 0;
+      let mouseY = 0;
+      const windowHalfX = window.innerWidth / 2;
+      const windowHalfY = window.innerHeight / 2;
+
+      document.addEventListener('mousemove', (event) => {
+        mouseX = event.clientX - windowHalfX;
+        mouseY = event.clientY - windowHalfY;
+      });
+
+      function animate() {
+        requestAnimationFrame(animate);
+
+        const factor = 0.001;
+        cloudGroup.position.x +=
+          (mouseX * factor - cloudGroup.position.x) * 0.1;
+        cloudGroup.position.y +=
+          (-mouseY * factor - cloudGroup.position.y) * 0.1;
+
+        cloudGroup.children.forEach((sprite, idx) => {
+          sprite.position.x += 0.02 * (idx % 2 === 0 ? 1 : -1);
+          if (sprite.position.x > 50) sprite.position.x = -50;
+          if (sprite.position.x < -50) sprite.position.x = 50;
+        });
+
+        renderer.render(scene, camera);
+      }
+
+      animate();
+    }).catch(err => {
+      console.error('텍스처 로딩 오류:', err);
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
