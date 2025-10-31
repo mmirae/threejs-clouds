@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>Three.js 구름 두 종류</title>
+  <title>sky</title>
   <style>
     body { margin: 0; overflow: hidden; }
     canvas { display: block; }
@@ -30,7 +30,28 @@
     const loader = new THREE.TextureLoader();
     const textures = [];
 
-    // 두 텍스처 로딩 완료 후 실행
+    const clickableClouds = [];
+    const clickedClouds = new Map();
+
+    // 마우스 클릭 감지용
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    // 클릭 이벤트
+    document.addEventListener('click', (event) => {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(clickableClouds);
+
+      if (intersects.length > 0) {
+        const clicked = intersects[0].object;
+        clickedClouds.set(clicked, { scale: 1.4, speed: 0.05 });
+      }
+    });
+
+    // 이미지 두 개 로딩
     Promise.all([
       loader.loadAsync('./cloud.png'),
       loader.loadAsync('./bigcloud.png')
@@ -49,17 +70,15 @@
         });
 
         const sprite = new THREE.Sprite(material);
-        sprite.scale.set(
-          10 + Math.random() * 10,
-          6 + Math.random() * 6,
-          1
-        );
+        const scale = 10 + Math.random() * 10;
+        sprite.scale.set(scale, scale * 0.6, 1);
         sprite.position.set(
           (Math.random() - 0.5) * 100,
           (Math.random() - 0.5) * 50,
           (Math.random() - 0.5) * 50
         );
         cloudGroup.add(sprite);
+        clickableClouds.push(sprite); // 클릭 가능하게 등록
       }
 
       let mouseX = 0;
@@ -85,6 +104,21 @@
           sprite.position.x += 0.02 * (idx % 2 === 0 ? 1 : -1);
           if (sprite.position.x > 50) sprite.position.x = -50;
           if (sprite.position.x < -50) sprite.position.x = 50;
+        });
+
+        // 클릭된 구름 확대-축소 애니메이션
+        clickedClouds.forEach((data, sprite) => {
+          const targetScale = 1;
+          const currentScale = sprite.scale.x;
+          const newScale = currentScale - data.speed;
+
+          if (newScale <= sprite.userData.originalScale || newScale <= targetScale) {
+            const s = sprite.userData.originalScale || targetScale;
+            sprite.scale.set(s, s * 0.6, 1);
+            clickedClouds.delete(sprite);
+          } else {
+            sprite.scale.set(newScale, newScale * 0.6, 1);
+          }
         });
 
         renderer.render(scene, camera);
